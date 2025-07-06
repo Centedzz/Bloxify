@@ -40,12 +40,14 @@ local Window = Rayfield:CreateWindow({
 
  local PlayerTab = Window:CreateTab("Player", 4483362458) -- Title, Image
 
+local SpeedLabel = PlayerTab:CreateLabel("Speed")
+
 local Slider = PlayerTab:CreateSlider({
     Name = "Walkspeed",
     Range = {0, 100},
     Increment = 1,
     Suffix = "Speed",
-    CurrentValue = 16, -- or the player's default speed
+    CurrentValue = 16,
     Flag = "Slider1",
     Callback = function(Value)
         local Player = game.Players.LocalPlayer
@@ -66,7 +68,7 @@ local SprintWalkspeedSlider = PlayerTab:CreateSlider({
     Range = {0, 100},
     Increment = 1,
     Suffix = "Speed",
-    CurrentValue = 20, -- or whatever your sprint speed normally starts at
+    CurrentValue = 20,
     Flag = "Slider2",
     Callback = function(Value)
         local Player = game.Players.LocalPlayer
