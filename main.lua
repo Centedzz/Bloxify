@@ -40,9 +40,9 @@ local Window = Rayfield:CreateWindow({
 
  local PlayerTab = Window:CreateTab("Player", 4483362458) -- Title, Image
 
-local SpeedLabel = PlayerTab:CreateLabel("Speed")
+PlayerTab:CreateLabel("Speed")
 
-local Slider = PlayerTab:CreateSlider({
+local WalkspeedSlider = PlayerTab:CreateSlider({
     Name = "Walkspeed",
     Range = {0, 100},
     Increment = 1,
@@ -80,6 +80,35 @@ local SprintWalkspeedSlider = PlayerTab:CreateSlider({
             SprintWalkSpeedValue.Value = Value
         else
             warn("SprintWalkSpeed value not found!")
+        end
+    end,
+})
+
+
+local RunService = game:GetService("RunService")
+local staminaConnection
+
+local StaminaToggle = PlayerTab:CreateToggle({
+    Name = "Infinate Stamina",
+    CurrentValue = false,
+    Flag = "StaminaLockToggle",
+    Callback = function(enabled)
+        if enabled then
+            staminaConnection = RunService.Heartbeat:Connect(function()
+                local player = game.Players.LocalPlayer
+                local staminaValue = player:FindFirstChild("ServerVariables")
+                    and player.ServerVariables:FindFirstChild("Sprint")
+                    and player.ServerVariables.Sprint:FindFirstChild("Stamina")
+
+                if staminaValue then
+                    staminaValue.Value = 100
+                end
+            end)
+        else
+            if staminaConnection then
+                staminaConnection:Disconnect()
+                staminaConnection = nil
+            end
         end
     end,
 })
