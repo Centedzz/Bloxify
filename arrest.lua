@@ -24,45 +24,59 @@ local baseCFrame = CFrame.new(
 )
 
 local function simulateDetain()
-    wait(3)
+    task.wait(3)
     local gui = LocalPlayer:FindFirstChild("PlayerGui")
-    local cuffUI = gui and gui:FindFirstChild("CuffUI")
-    local detainButton = cuffUI and cuffUI:FindFirstChild("LeftFrame") and cuffUI.LeftFrame:FindFirstChild("Detain")
+    if not gui then return end
+    local cuffUI = gui:FindFirstChild("CuffUI")
+    if not cuffUI then return end
+    local leftFrame = cuffUI:FindFirstChild("LeftFrame")
+    if not leftFrame then return end
+    local detainButton = leftFrame:FindFirstChild("Detain")
     if detainButton and detainButton:IsA("TextButton") and detainButton.Visible and detainButton.Active then
         detainButton:Activate()
-        print("🔒 Detain triggered.")
-    else
-        print("⚠️ Detain not triggered - missing or inactive.")
     end
 end
 
-
 local function followTarget(player)
+    if followConnection then 
+        followConnection:Disconnect() 
+        followConnection = nil
+    end
+    
     local character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
     local hrp = character:WaitForChild("HumanoidRootPart")
     local timeInvalid = 0
     local maxWait = 10
 
-    if followConnection then followConnection:Disconnect() end
     followConnection = RunService.RenderStepped:Connect(function(dt)
+        if not player or not player.Parent then
+            if followConnection then 
+                followConnection:Disconnect() 
+                followConnection = nil
+            end
+            return
+        end
+        
         local targetTeam = player.Team and player.Team.Name
-        local targetHRP = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+        local targetChar = player.Character
+        local targetHRP = targetChar and targetChar:FindFirstChild("HumanoidRootPart")
 
-        if targetTeam == targetTeamName and targetHRP then
+        if targetTeam == targetTeamName and targetHRP and hrp then
             timeInvalid = 0
             hrp.CFrame = targetHRP.CFrame + Vector3.new(0, 2, 0)
         else
             timeInvalid += dt
             if timeInvalid >= maxWait then
-                print("⏳ Target invalid >10s. Switching or teleporting...")
-                if followConnection then followConnection:Disconnect() end
+                if followConnection then 
+                    followConnection:Disconnect() 
+                    followConnection = nil
+                end
                 escapeeTarget = nil
 
                 local found = false
                 for _, p in ipairs(Players:GetPlayers()) do
                     if p ~= LocalPlayer and p.Team and p.Team.Name == targetTeamName then
                         escapeeTarget = p
-                        print("🔁 New Escapee found:", p.Name)
                         followTarget(p)
                         simulateDetain()
                         found = true
@@ -72,43 +86,42 @@ local function followTarget(player)
 
                 if not found and hrp then
                     hrp.CFrame = baseCFrame + Vector3.new(0, 3, 0)
-                    print("🏃 No Escapee found. Teleported to base.")
                 end
             end
         end
     end)
 
     LocalPlayer.CharacterAdded:Connect(function()
-        wait(0.3)
-        if escapeeTarget then followTarget(escapeeTarget) end
+        task.wait(0.3)
+        if escapeeTarget then 
+            followTarget(escapeeTarget) 
+        end
     end)
 end
-
 
 local function runDetainSequence()
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= LocalPlayer and player.Team and player.Team.Name == targetTeamName then
             escapeeTarget = player
-            print("🎯 Escapee acquired:", player.Name)
             followTarget(player)
             simulateDetain()
             return
         end
     end
 
-    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if hrp then
-        hrp.CFrame = baseCFrame + Vector3.new(0, 3, 0)
-        print("🚫 No Escapee found. Returned to base.")
+    local character = LocalPlayer.Character
+    if character then
+        local hrp = character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            hrp.CFrame = baseCFrame + Vector3.new(0, 3, 0)
+        end
     end
 end
-
 
 local function monitorHandcuffs()
     local function check(container)
         local cuffs = container:FindFirstChild("Handcuffs")
         if cuffs and cuffs:IsA("Tool") then
-            print("🧤 Handcuffs detected in", container.Name)
             runDetainSequence()
         end
     end
@@ -120,16 +133,19 @@ local function monitorHandcuffs()
     if serverVars then check(serverVars) end
 
     backpack.ChildAdded:Connect(function(c)
-        if c.Name == "Handcuffs" then check(backpack) end
+        if c.Name == "Handcuffs" then 
+            check(backpack) 
+        end
     end)
 
     if serverVars then
         serverVars.ChildAdded:Connect(function(c)
-            if c.Name == "Handcuffs" then check(serverVars) end
+            if c.Name == "Handcuffs" then 
+                check(serverVars) 
+            end
         end)
     end
 end
-
 
 local function disableGuardBarriers()
     local folder = workspace:FindFirstChild("Map")
@@ -143,12 +159,10 @@ local function disableGuardBarriers()
                 part.CanTouch = false
                 part.CanCollide = false
                 part.Transparency = 1
-                print("🧱 Disabled GuardBarrier:", part.Name)
             end
         end
     end
 end
-
 
 local function neutralizeSpawnkillBarriers()
     local teamColor = LocalPlayer.Team and LocalPlayer.Team.TeamColor
@@ -168,7 +182,6 @@ local function neutralizeSpawnkillBarriers()
                         part.CanTouch = false
                         part.CanCollide = false
                         part.Transparency = 1
-                        print("🛡️ Neutralized barrier part:", part.Name)
                     end
                 end
             end
@@ -176,71 +189,65 @@ local function neutralizeSpawnkillBarriers()
     end
 end
 
--- ⛓️ Nudge character to avoid spawn traps
 local function nudgeCharacter()
-    local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
-    local hrp = char and char:FindFirstChild("HumanoidRootPart")
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
     if hrp then
         hrp.CFrame = hrp.CFrame + hrp.CFrame.LookVector * 2 + Vector3.new(0, 2, 0)
-        print("⛓️ Nudge executed.")
     end
 end
 
+local function createStaffAlert(name)
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Name = "StaffAlert"
+    screenGui.ResetOnSpawn = false
+    screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
 
-pcall(function()
+    local alertFrame = Instance.new("Frame")
+    alertFrame.Size = UDim2.new(0, 320, 0, 60)
+    alertFrame.Position = UDim2.new(0.5, -160, 0.05, 0)
+    alertFrame.AnchorPoint = Vector2.new(0.5, 0)
+    alertFrame.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
+    alertFrame.BorderSizePixel = 0
+    alertFrame.Parent = screenGui
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextSize = 22
+    textLabel.TextColor3 = Color3.new(1, 1, 1)
+    textLabel.Text = "🚨 STAFF DETECTED: " .. name
+    textLabel.Parent = alertFrame
+
+    task.delay(5, function()
+        screenGui:Destroy()
+    end)
+end
+
+local function checkStaff(player)
+    if table.find(knownStaffIds, player.UserId) then
+        createStaffAlert(player.Name)
+    end
+end
+
+local function initialize()
     disableGuardBarriers()
     neutralizeSpawnkillBarriers()
     monitorHandcuffs()
     nudgeCharacter()
-
-      
-    local knownStaffIds = {
-        1078803652, 103415684, 88554863, 2596431645, 6209871807, 2586607449,
-        1639935407, 5755033491, 2666293035, 4150224481, 4521477021, 516340376,
-        1019416391, 1568722355, 1419883261, 677893384, 1610467201, 76622615,
-        3160916527, 5834670421, 304218468, 516954569, 3821639731, 243329354,
-        3236777516, 640073286, 97940975, 756353889, 474657539, 713313171,
-        316958565, 145788919, 320456898, 2521325511, 1230976883, 3100284074,
-        120034822, 50730165, 100409924
-    }
-
-    local function createStaffAlert(name)
-        local screenGui = Instance.new("ScreenGui")
-        screenGui.Name = "StaffAlert"
-        screenGui.ResetOnSpawn = false
-        screenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
-
-        local alertFrame = Instance.new("Frame")
-        alertFrame.Size = UDim2.new(0, 320, 0, 60)
-        alertFrame.Position = UDim2.new(0.5, -160, 0.05, 0)
-        alertFrame.AnchorPoint = Vector2.new(0.5, 0)
-        alertFrame.BackgroundColor3 = Color3.fromRGB(200, 30, 30)
-        alertFrame.BorderSizePixel = 0
-        alertFrame.Parent = screenGui
-
-        local textLabel = Instance.new("TextLabel")
-        textLabel.Size = UDim2.new(1, 0, 1, 0)
-        textLabel.BackgroundTransparency = 1
-        textLabel.Font = Enum.Font.GothamBold
-        textLabel.TextSize = 22
-        textLabel.TextColor3 = Color3.new(1, 1, 1)
-        textLabel.Text = "🚨 STAFF DETECTED: " .. name
-        textLabel.Parent = alertFrame
-
-        task.delay(5, function()
-            screenGui:Destroy()
-        end)
-    end
-
-    local function checkStaff(player)
-        if table.find(knownStaffIds, player.UserId) then
-            print("🚨 STAFF DETECTED:", player.Name)
-            createStaffAlert(player.Name)
-        end
-    end
 
     for _, player in ipairs(Players:GetPlayers()) do
         checkStaff(player)
     end
 
     Players.PlayerAdded:Connect(checkStaff)
+end
+
+local success, err = pcall(initialize)
+if not success then
+    warn(err)
+end
+
+return nil
